@@ -1,84 +1,60 @@
-# -*- coding: utf-8 -*-
-import os
 import telebot
-
-token = os.environ['TELEGRAM_TOKEN']
-
 from telebot import types
-from json import load, dump
-from time import time
-from math import floor
+from telebot.types import LabeledPrice, ShippingOption
 
-bot = telebot.TeleBot(token)
+API = "1854723686:AAFTyVNy4TlCJWzQVQ_avT0jA9RDPscFGrg"
+STRIPE = "284685063:TEST:YWYyZWU2ZDc3ZmIw"
 
-# Paste from here to github
-data = {}
+provider_token = STRIPE  # @BotFather -> Bot Settings -> Payments
+bot = telebot.TeleBot(API)
 
-def back_main():
-    keyboard = types.InlineKeyboardMarkup()
-    callback_button = types.InlineKeyboardButton(text="Back", callback_data="back")
-    keyboard.add(callback_button)
-    return keyboard
-
-def write_in_file(d, file_name="data.json"):
-    with open(file_name, "w") as f:
-        dump(d, f, indent=2)
+prices = [LabeledPrice(label='Цена', amount=10000), LabeledPrice('Комиссия', 0)]
 
 
-def load_file(file_name="data.json"):
-    try:
-        with open(file_name) as json_file:
-            d = load(json_file)
-            return d
-    except FileNotFoundError:
-        write_in_file({})
-        return {}
-
-@bot.message_handler(content_types=["text"])
-@bot.message_handler(commands=['help', 'start'])
-def help_start(msg):
-    keyboard = types.InlineKeyboardMarkup()
-    mine = types.InlineKeyboardButton(text='Click to mine', callback_data='mine')
-    about = types.InlineKeyboardButton(text="About", callback_data='about')
-    keyboard.add(mine)
-    keyboard.add(about)
-    text = "Hello " + msg.chat.first_name + "\nWelcome to <b>Davies BTC miner</b>\nEarn free btc by mining with just one click ...... \n blah blah blah.......\n Just click mine"
-    try:
-        bot.edit_message_text(text, msg.chat.id, message_id=msg.message_id, parse_mode="HTML", reply_markup=keyboard)
-    except:
-        bot.send_message(msg.chat.id, text, parse_mode="HTML", reply_markup=keyboard)
+@bot.message_handler(commands=['start'])
+def start(message):
+    menu = types.ReplyKeyboardMarkup()
+    menu.row('Products')
+    menu.row('About the bot')
+    bot.send_message(message.chat.id, 'Hello , {name} \nSelect a menu item :.'.format(name=message.chat.first_name),
+                     reply_markup=menu)
 
 
+@bot.message_handler(content_types=['text'])
+def body(message):
+    if message.text == 'Products':
+        bot.send_message(message.chat.id,
+                         "You will recieve an invoice now."
+                         " Use this card number: `4242 4242 4242 4242`", parse_mode='Markdown')
+        bot.send_invoice(
+            chat_id=message.chat.id,
+            title='Тест',
+            description='You will make a test transaction.',
+            invoice_payload='true',
+            provider_token=provider_token,
+            start_parameter='true',
+            currency='rub',
+            prices=prices
+        )
+    elif message.text == 'About the bot':
+        bot.send_message(message.chat.id,
+                         'This is a bot store with Yandex cashier.\nWant to yourself the same?\nCan you order it from us @LifeCode_Bot')
 
-@bot.callback_query_handler(func=lambda call: True)
-def answer_query(call):
-    if call.message:
-        if call.data == 'back':
-            help_start(call.message)
-        elif call.data == 'mine':
-            data = load_file()
-            if not str(call.message.chat.id) in data:
-                data[str(call.message.chat.id)] = {"time":time()}
-                write_in_file(data)
-            user = data[str(call.message.chat.id)]
-            kb = types.InlineKeyboardMarkup()
-            withdraw = types.InlineKeyboardButton(text='Withdraw', callback_data="withdraw")
-            back_btn = types.InlineKeyboardButton(text="Back", callback_data="back")
-            kb.add(withdraw)
-            kb.add(back_btn)
-            txt = f"Current rate: 10H/s\nEarnings per day 0.86 btc\n\nCurrent amount mined: {str((floor(time()) - user['time'])*0.00001)}\n\nRefer friends to earn more: t.me/xandee_btc_miner"
-            bot.edit_message_text(txt, call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML",
-                                  reply_markup=kb)
-        elif call.data == "about":
-            bot.edit_message_text("This is to show u mf's that all these shit are scam and you should stop coming to my f***ing dm with all these f***ing links", 
-            call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML",
-                                  reply_markup=back_main())
-        elif call.data == "withdraw":
-            bot.send_message(1289366093, call.message.chat.first_name+" tried to withdraw lol")
-            kb = types.InlineKeyboardMarkup()
-            back_btn = types.InlineKeyboardButton(text="Back", callback_data="back")
-            kb.add(back_btn)
-            txt = "To withdraw:\nYou must have 100000 btc\nYou must send 0.01 btc to <i>kgjsrnhrbfherdfhebdfhfdljk</i> address to confirm your wallet (If you try it your money don jakpa)\nYou must Refer 1000 friends\nBlah blah blah .........."
-            bot.edit_message_text(txt, call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML",
-                                  reply_markup=kb)
-bot.polling(none_stop=True)
+
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def checkout(pre_checkout_query):
+    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True,
+                                  error_message="Something went wrong"
+                                                "Try again later")
+
+
+@bot.message_handler(content_types=['successful_payment'])
+def got_payment(message):
+    bot.send_message(message.chat.id,
+                     'You have successfully created a transaction on `{} {}`! '.format(
+                         message.successful_payment.total_amount / 100, message.successful_payment.currency),
+                     parse_mode='Markdown')
+
+
+bot.skip_pending = True
+bot.polling()
