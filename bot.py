@@ -36,7 +36,7 @@ def body(message):
             currency='usd',
             prices=prices
         )
-    elif message.text == 'About the bot':
+    elif message.text == 'About':
         bot.send_message(message.chat.id,
                          'This is a bot made by xandee for a showcase on how telegram bots and payments work.\nThe bot is not just limited to only payments as it can do limitless things even to crypto airdrop bots')
 
