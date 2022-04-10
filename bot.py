@@ -2,8 +2,8 @@ import telebot
 from telebot import types
 from telebot.types import LabeledPrice
 
-API = "5162650515:AAHSMSjEEwJN9QAryqxuAUhaSUt_-y56Nhg"
-STRIPE = "284685063:TEST:ZGQyMDBkZjY4ZTVk"
+API = "API_KEY"
+STRIPE = "STRIPE_TEST"
 
 provider_token = STRIPE  # @BotFather -> Bot Settings -> Payments
 bot = telebot.TeleBot(API)
